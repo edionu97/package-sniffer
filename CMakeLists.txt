@@ -18,8 +18,9 @@ add_executable(
         package/headers/ip/ip_header.h
         package/tcp/tcp_package.cpp
         package/tcp/tcp_package.h
+        package/generic_package.h
         server/sources/ws_broadcast_server.cpp
-        server/headers/ws_broadcast_server.h)
+        server/headers/ws_broadcast_server.h package/generic_package.cpp utils/nlohmann_json_conversion/convert_to_json.h utils/nlohmann_json_conversion/convert_to_json.cpp)
 
 target_link_libraries(package_sniffer ${PCAP_LIBRARY})
 target_link_libraries(package_sniffer "/usr/lib/x86_64-linux-gnu/libiw.so")

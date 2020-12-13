@@ -13,12 +13,19 @@
 #include "../../package/headers/ethernet/ethernet_header.h"
 #include "../../package/headers/ip/ip_header.h"
 #include "../../package/tcp/tcp_package.h"
+#include "../../package/generic_package.h"
 
 /**
  * Handler for on_packed intercepted
  * @param package: the package
  */
-void on_packed_intercepted(tcp_package package);
+void on_tcp_package_intercepted(tcp_package package);
+
+/**
+ * This method handles the generic package message
+ * @param package: the package
+ */
+void on_generic_package_intercepted(generic_package package);
 
 class packet_sniffer
 {
@@ -44,7 +51,7 @@ private:
      * @param packet: the packet
      * @return an instance of tcp package
      */
-    static tcp_package get_tcp_package(const u_char *packet);
+    static tcp_package get_tcp_package(const u_char *packet, int total_package_size);
 
     /**
      * This function it is used for getting the ethernet header
@@ -59,6 +66,8 @@ private:
      * @return an instance of the ip_header
      */
     static ip_header get_ip_header(const u_char *packet);
+
+    static std::string get_http_payload(const u_char* data_buffer, int size);
 };
 
 

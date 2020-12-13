@@ -17,6 +17,7 @@
 #include<netinet/ip.h>    //Provides declarations for ip header
 
 #include "../headers/packet_sniffer.h"
+#include "../../package/generic_package.h"
 
 std::future<void> packet_sniffer::start_package_interception_async(const std::string &interface_name)
 {
@@ -64,44 +65,63 @@ std::future<void> packet_sniffer::start_package_interception_async(const std::st
 
 void packet_sniffer::on_process_packet(u_char *args, const struct pcap_pkthdr *header, const u_char *packet)
 {
-//    //get the ethernet header
-//    auto *ethernet_header = reinterpret_cast<ether_header *>(const_cast<u_char *>(packet));
+    //get the ethernet header
+    const auto *ethernet_header = reinterpret_cast<ether_header *>(const_cast<u_char *>(packet));
 
-//    if (ntohs(ethernet_header->ether_type) == ETHERTYPE_ARP)
-//    {
-//        std::cout << "ARP" << '\n';
-//        return;
-//    }
-//
-//    // if is reverse arp
-//    if (ntohs(ethernet_header->ether_type) == ETHERTYPE_REVARP)
-//    {
-//        std::cout << "RVARP" << '\n';
-//        return;
-//    }
-
-    //get the ip header part of the packet
-    auto *ip_header = reinterpret_cast<iphdr *>(const_cast<u_char *>(packet + sizeof(struct ethhdr)));
-
-    //if we do not have the TCP protocol do nothing
-    if (ip_header->protocol != 6)
+    // if is undefined
+    if (ntohs(ethernet_header->ether_type) == 8200)
     {
+        std::cout << "Undefined protocol\n";
         return;
     }
 
-    //handle the on package intercepted event
-    on_packed_intercepted(get_tcp_package(packet));
+    //get the ip header part of the packet
+    const auto *ip_header = reinterpret_cast<iphdr *>(const_cast<u_char *>(packet + sizeof(struct ethhdr)));
+
+    //process the tcp package
+    if (ip_header->protocol == 6)
+    {
+        //handle the on package intercepted event
+        on_tcp_package_intercepted(get_tcp_package(packet, header->len));
+        return;
+    }
+
+    //get the ip header
+    auto eth_header = get_ip_header(packet);
+
+    //generate the generic package
+    generic_package generic_package{eth_header, ip_header->protocol};
+
+    //call the handler
+    on_generic_package_intercepted(generic_package);
 }
 
-tcp_package packet_sniffer::get_tcp_package(const u_char *packet)
+tcp_package packet_sniffer::get_tcp_package(const u_char *packet, int total_package_size)
 {
     //get the ip header
     const auto ip_header = get_ip_header(packet);
 
+    //get the tcp package
+    auto tcp = tcp_package(ip_header,
+                           reinterpret_cast<tcphdr *>(
+                                   const_cast<u_char *>(packet + sizeof(struct ethhdr) + ip_header.ip_header_length)));
+
+    //the package is http only in this situation
+    tcp.isHttpPackage = tcp.destination_port == 80;
+
+    //if is http package
+    if (tcp.isHttpPackage)
+    {
+        //get the number of bytes to read
+        auto *icmp_header = (struct icmphdr *) (packet + ip_header.ip_header_length + sizeof(struct ethhdr));
+        auto tcp_header_size = sizeof(struct ethhdr) + ip_header.ip_header_length + sizeof icmp_header;
+
+        //set the payload
+        tcp.payload = get_http_payload(packet + tcp_header_size, total_package_size - tcp_header_size);
+    }
+
     //get the ip package
-    return tcp_package(ip_header,
-                       reinterpret_cast<tcphdr *>(
-                               const_cast<u_char *>(packet + sizeof(struct ethhdr) + ip_header.ip_header_length)));
+    return tcp;
 }
 
 
@@ -118,6 +138,21 @@ ip_header packet_sniffer::get_ip_header(const u_char *packet)
     //create an ip header
     return ip_header(header,
                      reinterpret_cast<iphdr *>(const_cast<u_char *>(packet + sizeof(struct ethhdr))));
+}
+
+std::string packet_sniffer::get_http_payload(const u_char *data_buffer, int size)
+{
+    std::string payload{};
+
+    //iterate through data
+    for (auto i = 0; i < size; ++i)
+    {
+        payload += (boost::format("%02X ")
+                    % static_cast<int>(static_cast<unsigned char>(data_buffer[i]))).str();
+    }
+
+    //set the payload
+    return payload;
 }
 
 
