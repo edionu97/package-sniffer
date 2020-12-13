@@ -3,6 +3,7 @@
 */
 #include <pcap.h>
 #include <iostream>
+#include <nlohmann/json.hpp>
 
 #include "sniffer/headers/packet_sniffer.h"
 #include "server/headers/ws_broadcast_server.h"
@@ -10,21 +11,57 @@
 //declare the server
 ws_broadcast_server web_socket_broadcast_server{};
 
+void to_json(nlohmann::json &converted_json, const tcp_package &package)
+{
+    //set the values for the tcp header
+    converted_json = {
+            {"source_port",        package.source_port},
+            {"destination_port",   package.destination_port},
+            {"sequence_number",    package.sequence_number},
+            {"acknowledge_number", package.acknowledge_number},
+            {"header_length",      package.header_length},
+            {"urgent_flag",        package.urgent_flag},
+            {"acknowledge_flag",   package.acknowledge_flag},
+            {"push_flag",          package.push_flag},
+            {"reset_flag",         package.reset_flag},
+            {"synchronize_flag",   package.synchronize_flag},
+            {"finish_flag",        package.finish_flag},
+            {"window",             package.window},
+            {"checksum",           package.checksum},
+            {"urgent_pointer",     package.urgent_pointer},
+    };
+
+    //get the ip header and set values
+    const auto &ip_header = package.header_ip;
+    converted_json["ip_header"]["ttl"] = ip_header.ttl;
+    converted_json["ip_header"]["protocol"] = ip_header.protocol;
+    converted_json["ip_header"]["ip_version"] = ip_header.ip_version;
+    converted_json["ip_header"]["ip_header_length"] = ip_header.ip_header_length;
+    converted_json["ip_header"]["type_of_service"] = ip_header.type_of_service;
+    converted_json["ip_header"]["size_of_packet"] = ip_header.size_of_packet;
+    converted_json["ip_header"]["identification"] = ip_header.identification;
+    converted_json["ip_header"]["checksum"] = ip_header.checksum;
+    converted_json["ip_header"]["source_ip"] = ip_header.source_ip;
+    converted_json["ip_header"]["destination_ip"] = ip_header.destination_ip;
+
+    //get the eth header and set values
+    const auto &eth_header = ip_header.header_ethernet;
+    converted_json["ip_header"]["eth_header"]["destination_mac_address"] = eth_header.destination_mac_address;
+    converted_json["ip_header"]["eth_header"]["source_mac_address"] = eth_header.source_mac_address;
+    converted_json["ip_header"]["eth_header"]["protocol"] = eth_header.protocol;
+}
+
 /**
  * Implement the on_package intercepted handler
  * @param tcp_package : the tcp package
  */
 void on_packed_intercepted(tcp_package tcp_package)
 {
-    std::cout << "Source: " << tcp_package.header_ip.header_ethernet.source_mac_address << '\n';
-    std::cout << "Dest: " << tcp_package.header_ip.header_ethernet.destination_mac_address << '\n';
-    std::cout << "Protocol: " << tcp_package.header_ip.header_ethernet.protocol << '\n';
+    //generate the json
+    nlohmann::json generated_json{{"package", tcp_package}};
 
-    std::cout << "Source IP" << tcp_package.header_ip.source_ip << '\n';
-    std::cout << "Destionation IP" << tcp_package.header_ip.destination_ip << '\n';
-
-    std::cout << "Tcp destionation port" << tcp_package.destination_port << '\n';
-    std::cout << "Tcp source port" << tcp_package.source_port << '\n';
+    //broadcast the message to the client
+    web_socket_broadcast_server.broadcast_message(generated_json.dump(4));
 }
 
 int main()
