@@ -29,6 +29,7 @@ void to_json(nlohmann::json &converted_json, const tcp_package &package)
             {"window",             package.window},
             {"checksum",           package.checksum},
             {"urgent_pointer",     package.urgent_pointer},
+            {"isHttpPackage",      package.isHttpPackage}
     };
 
     //get the ip header and set values

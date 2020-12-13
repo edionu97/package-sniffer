@@ -64,22 +64,21 @@ std::future<void> packet_sniffer::start_package_interception_async(const std::st
 
 void packet_sniffer::on_process_packet(u_char *args, const struct pcap_pkthdr *header, const u_char *packet)
 {
+//    //get the ethernet header
+//    auto *ethernet_header = reinterpret_cast<ether_header *>(const_cast<u_char *>(packet));
 
-    //get the ethernet header
-    auto *ethernet_header = reinterpret_cast<ether_header *>(const_cast<u_char *>(packet));
-
-    if (ntohs(ethernet_header->ether_type) == ETHERTYPE_ARP)
-    {
-        std::cout << "ARP" << '\n';
-        return;
-    }
-
-    // if is reverse arp
-    if (ntohs(ethernet_header->ether_type) == ETHERTYPE_REVARP)
-    {
-        std::cout << "RVARP" << '\n';
-        return;
-    }
+//    if (ntohs(ethernet_header->ether_type) == ETHERTYPE_ARP)
+//    {
+//        std::cout << "ARP" << '\n';
+//        return;
+//    }
+//
+//    // if is reverse arp
+//    if (ntohs(ethernet_header->ether_type) == ETHERTYPE_REVARP)
+//    {
+//        std::cout << "RVARP" << '\n';
+//        return;
+//    }
 
     //get the ip header part of the packet
     auto *ip_header = reinterpret_cast<iphdr *>(const_cast<u_char *>(packet + sizeof(struct ethhdr)));
@@ -92,9 +91,6 @@ void packet_sniffer::on_process_packet(u_char *args, const struct pcap_pkthdr *h
 
     //handle the on package intercepted event
     on_packed_intercepted(get_tcp_package(packet));
-
-
-
 }
 
 tcp_package packet_sniffer::get_tcp_package(const u_char *packet)
