@@ -1,27 +1,41 @@
 /*
 	Packet sniffer using libpcap library
 */
-#include<pcap.h>
-#include<stdio.h>
-#include<stdlib.h> // for exit()
-#include<string.h> //for memset
-
-#include<sys/socket.h>
-#include<arpa/inet.h> // for inet_ntoa()
-#include<net/ethernet.h>
-#include<netinet/ip_icmp.h>    //Provides declarations for icmp header
-#include<netinet/udp.h>    //Provides declarations for udp header
-#include<netinet/tcp.h>    //Provides declarations for tcp header
-#include<netinet/ip.h>    //Provides declarations for ip header
+#include <pcap.h>
 #include <iostream>
-#include "sniffer/headers/packet_sniffer.h"
 
+#include "sniffer/headers/packet_sniffer.h"
+#include "server/headers/ws_broadcast_server.h"
+
+//declare the server
+ws_broadcast_server web_socket_broadcast_server{};
+
+/**
+ * Implement the on_package intercepted handler
+ * @param tcp_package : the tcp package
+ */
+void on_packed_intercepted(tcp_package tcp_package)
+{
+    std::cout << "Source: " << tcp_package.header_ip.header_ethernet.source_mac_address << '\n';
+    std::cout << "Dest: " << tcp_package.header_ip.header_ethernet.destination_mac_address << '\n';
+    std::cout << "Protocol: " << tcp_package.header_ip.header_ethernet.protocol << '\n';
+
+    std::cout << "Source IP" << tcp_package.header_ip.source_ip << '\n';
+    std::cout << "Destionation IP" << tcp_package.header_ip.destination_ip << '\n';
+
+    std::cout << "Tcp destionation port" << tcp_package.destination_port << '\n';
+    std::cout << "Tcp source port" << tcp_package.source_port << '\n';
+}
 
 int main()
 {
     try
     {
-        packet_sniffer::start_package_interception("wlp0s20f3");
+        //launch the package interception async and keep the future to avoid locking of the main thead
+        auto child_future = packet_sniffer::start_package_interception_async("wlp0s20f3");
+
+        //run the server
+        web_socket_broadcast_server.run(9002);
     }
     catch (std::exception &e)
     {

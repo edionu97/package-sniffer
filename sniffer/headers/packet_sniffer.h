@@ -2,14 +2,23 @@
 // Created by eduard on 13.12.2020.
 //
 
+#pragma  once
+
 #ifndef PACKAGE_SNIFFER_PACKET_SNIFFER_H
 #define PACKAGE_SNIFFER_PACKET_SNIFFER_H
 
 
 #include <string>
+#include <future>
 #include "../../package/headers/ethernet/ethernet_header.h"
 #include "../../package/headers/ip/ip_header.h"
 #include "../../package/tcp/tcp_package.h"
+
+/**
+ * Handler for on_packed intercepted
+ * @param package: the package
+ */
+void on_packed_intercepted(tcp_package package);
 
 class packet_sniffer
 {
@@ -18,7 +27,7 @@ public:
     /**
      * This method it is used for starting the package sniffer
      */
-    static void start_package_interception(const std::string &interface_name);
+    static std::future<void> start_package_interception_async(const std::string &interface_name);
 
 private:
 

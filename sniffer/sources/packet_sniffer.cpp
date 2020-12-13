@@ -18,42 +18,53 @@
 
 #include "../headers/packet_sniffer.h"
 
-void packet_sniffer::start_package_interception(const std::string &interface_name)
+std::future<void> packet_sniffer::start_package_interception_async(const std::string &interface_name)
 {
-    //getting all the devices
-    char error_buffer[100] = "";
-
-    //open the handle
-    pcap_t *pcap_handle;
-    if ((pcap_handle = pcap_open_live(interface_name.c_str(), 65536, 1, 0, error_buffer)) == nullptr)
+    return std::async(std::launch::async, [&]()
     {
-        //get the error message
-        const auto error_message = boost::format("Couldn't open the device: %s due to ( %s )")
-                                   % interface_name.c_str()
-                                   % error_buffer;
+        try
+        {
+            //getting all the devices
+            char error_buffer[100] = "";
 
-        //throw the error
-        throw std::runtime_error(error_message.str());
-    }
+            //open the handle
+            pcap_t *pcap_handle;
+            if ((pcap_handle = pcap_open_live(interface_name.c_str(), 65536, 1, 0, error_buffer)) == nullptr)
+            {
+                //get the error message
+                const auto error_message = boost::format("Couldn't open the device: %s due to ( %s )")
+                                           % interface_name.c_str()
+                                           % error_buffer;
 
-    //write the message
-    std::cout << boost::format("Opened the %s for package scanning \n") % interface_name;
+                //throw the error
+                throw std::runtime_error(error_message.str());
+            }
 
-    //start the looping
-    if (pcap_loop(pcap_handle, -1, on_process_packet, nullptr) < 0)
-    {
-        //get the error message
-        const auto error_message = boost::format("Couldn't open the device: %s due to ( %s )")
-                                   % interface_name.c_str()
-                                   % error_buffer;
+            //write the message
+            std::cout << boost::format("Opened the %s for package scanning \n") % interface_name;
 
-        //throw the error
-        throw std::runtime_error(error_message.str());
-    }
+            //start the looping
+            if (pcap_loop(pcap_handle, -1, on_process_packet, nullptr) < 0)
+            {
+                //get the error message
+                const auto error_message = boost::format("Couldn't open the device: %s due to ( %s )")
+                                           % interface_name.c_str()
+                                           % error_buffer;
+
+                //throw the error
+                throw std::runtime_error(error_message.str());
+            }
+        }
+        catch (std::exception &e)
+        {
+            std::cout << e.what() << '\n';
+        }
+    });
 }
 
 void packet_sniffer::on_process_packet(u_char *args, const struct pcap_pkthdr *header, const u_char *packet)
 {
+
     //get the ethernet header
     auto *ethernet_header = reinterpret_cast<ether_header *>(const_cast<u_char *>(packet));
 
@@ -79,18 +90,10 @@ void packet_sniffer::on_process_packet(u_char *args, const struct pcap_pkthdr *h
         return;
     }
 
-    std::cout << "TCP" << '\n';
-    auto tcp_package = get_tcp_package(packet);
+    //handle the on package intercepted event
+    on_packed_intercepted(get_tcp_package(packet));
 
-    std::cout << "Source: " << tcp_package.header_ip.header_ethernet.source_mac_address << '\n';
-    std::cout << "Dest: " << tcp_package.header_ip.header_ethernet.destination_mac_address << '\n';
-    std::cout << "Protocol: " << tcp_package.header_ip.header_ethernet.protocol << '\n';
 
-    std::cout << "Source IP" << tcp_package.header_ip.source_ip << '\n';
-    std::cout << "Destionation IP" << tcp_package.header_ip.destination_ip << '\n';
-
-    std::cout << "Tcp destionation port" << tcp_package.destination_port << '\n';
-    std::cout << "Tcp source port" << tcp_package.source_port << '\n';
 
 }
 
@@ -120,5 +123,6 @@ ip_header packet_sniffer::get_ip_header(const u_char *packet)
     return ip_header(header,
                      reinterpret_cast<iphdr *>(const_cast<u_char *>(packet + sizeof(struct ethhdr))));
 }
+
 
 

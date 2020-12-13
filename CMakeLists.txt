@@ -17,7 +17,9 @@ add_executable(
         package/headers/ip/ip_header.cpp
         package/headers/ip/ip_header.h
         package/tcp/tcp_package.cpp
-        package/tcp/tcp_package.h)
+        package/tcp/tcp_package.h
+        server/sources/ws_broadcast_server.cpp
+        server/headers/ws_broadcast_server.h)
 
 target_link_libraries(package_sniffer ${PCAP_LIBRARY})
 target_link_libraries(package_sniffer "/usr/lib/x86_64-linux-gnu/libiw.so")
