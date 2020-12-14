@@ -3,6 +3,7 @@
 */
 #include <pcap.h>
 #include <iostream>
+#include <fstream>
 #include <nlohmann/json.hpp>
 
 #include "package/generic_package.h"
@@ -10,6 +11,10 @@
 #include "server/headers/ws_broadcast_server.h"
 
 #include "utils/nlohmann_json_conversion/convert_to_json.h"
+
+size_t package_number{};
+
+std::ofstream log_file{"log.txt"};
 
 //declare the server
 ws_broadcast_server web_socket_broadcast_server{};
@@ -20,20 +25,35 @@ ws_broadcast_server web_socket_broadcast_server{};
  */
 void on_tcp_package_intercepted(tcp_package package)
 {
+    ++package_number;
+
     //generate the json
     nlohmann::json generated_json{{"package", package}};
 
+    //make the json from the file
+    const auto packet = generated_json.dump(4);
+
+    //write in log file
+    log_file << "\n\n" << package_number << "-> ==============TCP==============\n" << packet << '\n';
+
     //broadcast the message to the client
-    web_socket_broadcast_server.broadcast_message(generated_json.dump(4));
+    web_socket_broadcast_server.broadcast_message(packet);
 }
 
 void on_generic_package_intercepted(generic_package package)
 {
-//generate the json
+    ++package_number;
+    //generate the json
     nlohmann::json generated_json{{"package", package}};
 
+    //make the json from the file
+    const auto packet = generated_json.dump(4);
+
+    //write in log file
+    log_file << "\n\n" << package_number << "-> ==============OTHER==============\n" << packet << '\n';
+
     //broadcast the message to the client
-    web_socket_broadcast_server.broadcast_message(generated_json.dump(4));
+    web_socket_broadcast_server.broadcast_message(packet);
 }
 
 int main()
